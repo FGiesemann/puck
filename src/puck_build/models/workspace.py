@@ -60,13 +60,15 @@ class Workspace:
             start_dir (Path): The directory to start the search from.
         """
         self._workspace_root: Path = self._find_workspace_root(start_dir)
-        self.raw_config = self._load_config_file()
-        self._validate_config()
-        self.local_settings: Dict[str, Any] = self._load_local_settings()
-        self.projects: List[Project] = self._process_projects()
-        self.sorted_projects: List[Project]
-        self.project_map: Dict[str, Project]
-        self.sorted_projects, self.project_map = self._analyze_and_sort_graph()
+        raw_config = self._load_config_file()
+        self._validate_config(raw_config)
+        self._local_settings: Dict[str, Any] = self._load_local_settings()
+        projects: List[Project] = self._process_projects(raw_config)
+        self._sorted_projects: List[Project]
+        self._project_map: Dict[str, Project]
+        self._sorted_projects, self._project_map = self._analyze_and_sort_graph(
+            projects
+        )
 
     @property
     def workspace_root(self) -> Path:
@@ -81,6 +83,18 @@ class Workspace:
     def local_settings_path(self) -> Path:
         """Der absolute Pfad zur .puck-local.json Datei."""
         return self.workspace_root / self.LOCAL_SETTINGS_FILE_NAME
+
+    @property
+    def local_settings(self) -> Dict[str, Any]:
+        return self._local_settings
+
+    @property
+    def projects(self) -> List[Project]:
+        return self._sorted_projects
+
+    @property
+    def project_map(self) -> Dict[str, Project]:
+        return self._project_map
 
     def _find_workspace_root(self, start_dir: Path) -> Path:
         current_dir = start_dir.resolve()
@@ -137,14 +151,14 @@ class Workspace:
                 f"Could not read local settings file at '{local_settings_path}': {e}"
             )
 
-    def _process_projects(self) -> List[Project]:
+    def _process_projects(self, raw_config: Dict[str, Any]) -> List[Project]:
         """
         Instantiates Project objects from the raw configuration list.
 
         Note: This only does object creation. Semantic validation (e.g., dependency cycles)
         must be performed after this step.
         """
-        projects_list: List[Dict[str, Any]] = self.raw_config["projects"]
+        projects_list: List[Dict[str, Any]] = raw_config["projects"]
         project_instances: List[Project] = []
 
         for project_data in projects_list:
@@ -153,7 +167,9 @@ class Workspace:
 
         return project_instances
 
-    def _analyze_and_sort_graph(self) -> Tuple[List[Project], Dict[str, Project]]:
+    def _analyze_and_sort_graph(
+        self, projects: List[Project]
+    ) -> Tuple[List[Project], Dict[str, Project]]:
         """
         Analyzes the dependency graph:
         1. Checks for unknown project names (duplicates).
@@ -167,7 +183,7 @@ class Workspace:
             InvalidWorkspaceConfigError: On unknown dependencies or cycles.
         """
         project_name_map: Dict[str, Project] = {}
-        for project in self.projects:
+        for project in projects:
             if project.name in project_name_map:
                 raise InvalidWorkspaceConfigError(
                     f"Duplicate project name found: '{project.name}'. Project names must be unique."
@@ -220,18 +236,18 @@ class Workspace:
 
         return list(reversed(sorted_list)), project_name_map
 
-    def _validate_config(self):
+    def _validate_config(self, raw_config: Dict[str, Any]):
         """
         Performs basic structural validation on the raw configuration data.
 
         Raises:
             InvalidWorkspaceConfigError: If the structure is invalid.
         """
-        if "projects" not in self.raw_config:
+        if "projects" not in raw_config:
             raise InvalidWorkspaceConfigError(
                 "Top-level key 'projects' is missing from the configuration."
             )
-        projects_list = self.raw_config["projects"]
+        projects_list = raw_config["projects"]
 
         if not isinstance(projects_list, list):
             raise InvalidWorkspaceConfigError(
