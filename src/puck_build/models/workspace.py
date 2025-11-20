@@ -10,6 +10,7 @@ Defines the workspace model class which represent a main project that contains
 subprojects in their separate directories and repositories.
 """
 
+from collections import deque
 from pathlib import Path
 from typing import List, Dict, Any, Set, Tuple
 import json
@@ -171,10 +172,10 @@ class Workspace:
         self, projects: List[Project]
     ) -> Tuple[List[Project], Dict[str, Project]]:
         """
-        Analyzes the dependency graph:
+        Analyzes the dependency graph using Kahn's algorithm (BFS-based):
         1. Checks for unknown project names (duplicates).
         2. Checks for unknown dependencies.
-        3. Performs a topological sort and checks for dependency cycles.
+        3. Performs topological sort and checks for cycles.
 
         Returns:
             A tuple: (sorted_projects_list, project_name_to_object_map)
@@ -182,6 +183,7 @@ class Workspace:
         Raises:
             InvalidWorkspaceConfigError: On unknown dependencies or cycles.
         """
+
         project_name_map: Dict[str, Project] = {}
         for project in projects:
             if project.name in project_name_map:
@@ -189,52 +191,39 @@ class Workspace:
                     f"Duplicate project name found: '{project.name}'. Project names must be unique."
                 )
             project_name_map[project.name] = project
-        available_names: Set[str] = set(project_name_map.keys())
+
+        in_degree: Dict[str, int] = {name: 0 for name in project_name_map}
+        adj_list: Dict[str, List[str]] = {name: [] for name in project_name_map}
+
+        for project in projects:
+            for dependency_name in project.depends_on:
+                if dependency_name not in project_name_map:
+                    raise InvalidWorkspaceConfigError(
+                        f"Unknown dependency '{dependency_name}' required by project '{project.name}'. "
+                        f"All dependencies must be defined projects in the workspace."
+                    )
+                adj_list[dependency_name].append(project.name)
+                in_degree[project.name] += 1
+
+        queue = deque([name for name, degree in in_degree.items() if degree == 0])
 
         sorted_list: List[Project] = []
-        visited_state: Dict[str, GraphState] = {
-            name: GraphState.UNVISITED for name in available_names
-        }
+        while queue:
+            current_name = queue.popleft()
+            sorted_list.append(project_name_map[current_name])
+            for dependent_name in adj_list[current_name]:
+                in_degree[dependent_name] -= 1
+                if in_degree[dependent_name] == 0:
+                    queue.append(dependent_name)
 
-        def _dfs_sort(project_name: str, path: List[str]):
-            """Recursive DFS helper for sorting and cycle detection."""
+        if len(sorted_list) != len(self.projects):
+            cyclic_nodes = [name for name, degree in in_degree.items() if degree > 0]
+            raise InvalidWorkspaceConfigError(
+                f"Dependency cycle detected! The following projects are involved and cannot be sorted: "
+                f"{', '.join(cyclic_nodes)}"
+            )
 
-            if project_name not in project_name_map:
-                chain = " -> ".join(path)
-                raise InvalidWorkspaceConfigError(
-                    f"Unknown dependency '{project_name}'. "
-                    f"The project is required by: {chain}."
-                )
-
-            project = project_name_map[project_name]
-
-            state = visited_state[project_name]
-            if state == GraphState.VISITING:
-                cycle_index = path.index(project_name)
-                cycle = " -> ".join(path[cycle_index:] + [project_name])
-                raise InvalidWorkspaceConfigError(
-                    f"Dependency cycle detected: {cycle}."
-                )
-
-            if state == GraphState.VISITED:
-                return
-
-            visited_state[project_name] = GraphState.VISITING
-            path.append(project_name)
-
-            for dep_name in project.depends_on:
-                _dfs_sort(dep_name, path)
-
-            visited_state[project_name] = GraphState.VISITED
-
-            sorted_list.append(project)
-            path.pop()
-
-        for name in available_names:
-            if visited_state[name] == GraphState.UNVISITED:
-                _dfs_sort(name, [])
-
-        return list(reversed(sorted_list)), project_name_map
+        return sorted_list, project_name_map
 
     def _validate_config(self, raw_config: Dict[str, Any]):
         """
