@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "puck-build-manager" 
+version = "0.1.0"
+description = "A generic build manager for modular projects using conan and cmake"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Puck Developer", email = "nobody@example.com"},
+]
+keywords = ["conan", "cmake", "build", "project-management", "cxx", "puck"]
+dependencies = []
+
+[project.scripts]
+puck = "puck_build.puck:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["puck_build"]
