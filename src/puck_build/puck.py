@@ -125,9 +125,14 @@ def main():
         elif args.command == "setup":
             logger.debug("command setup")
             workspace.setup_workspace(args.handle_existing)
-            logger.debug("command build")
         elif args.command == "build":
-            # TODO: Build all or selected projects
+            logger.debug("command build")
+            workspace.build_projects(
+                project_names=args.projects,
+                user_profiles=args.profiles,
+                target=args.target,
+            )
+            logger.info("Build process completed.")
             pass
     except WorkspaceNotFoundError as e:
         handle_fatal_error(f"Workspace configuration could not be found: {e}")

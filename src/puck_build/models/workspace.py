@@ -13,7 +13,7 @@ subprojects in their separate directories and repositories.
 from collections import deque
 from pathlib import Path
 import shutil
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 import json
 from enum import Enum
 
@@ -51,7 +51,7 @@ class Workspace:
     """
 
     CONFIG_FILE_NAME = "puck-workspace.json"
-    LOCAL_SETTINGS_FILE_NAME = ".puck-local.json"
+    LOCAL_SETTINGS_FILE_NAME = "puck-local.json"
 
     def __init__(self, start_dir: Path) -> None:
         """
@@ -140,8 +140,8 @@ class Workspace:
 
     def build_projects(
         self,
-        project_names: List[str] | None,
-        user_profiles: List[str] | None,
+        project_names: Optional[List[str]],
+        user_profiles: Optional[List[str]],
         target: str,
     ) -> None:
         """
@@ -149,7 +149,7 @@ class Workspace:
         """
         cmake_tool = CMakeTool()
 
-        default_profiles = self.local_settings.get("build_profiles", ["default"])
+        default_profiles = self.local_settings.get("profiles", ["default"])
         profiles_to_use = (
             user_profiles if user_profiles is not None else default_profiles
         )
