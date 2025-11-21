@@ -171,18 +171,10 @@ class Workspace:
         logger.print("\n--- Build Plan ---")
         for project in projects_to_build:
             logger.print(f"Project: {project.name}")
-            available_presets = cmake_tool.get_available_presets(project.absolute_path)
+
             for profile_name in profiles_to_use:
                 preset_name = profile_name
                 logger.print(f"  Configuration: {preset_name}")
-                if preset_name not in available_presets:
-                    logger.warning(
-                        f"    Preset '{preset_name}' not found for project '{project.name}'. Skipping build."
-                    )
-                    logger.warning(
-                        "    Please run 'puck install' to generate the missing Conan/CMake configuration."
-                    )
-                    continue
                 try:
                     cmake_tool.build(
                         project_path=project.absolute_path,
