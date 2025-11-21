@@ -23,6 +23,7 @@ from puck_build.models.project import (
     OPTIONAL_KEYS,
     Project,
 )
+from puck_build.tools.cmake import CMakeTool, CMakeToolError
 from puck_build.tools.git import GitTool, GitToolError
 from puck_build.utils.logger import logger
 
@@ -130,6 +131,66 @@ class Workspace:
 
             except GitToolError as e:
                 raise RuntimeError(f"Setup failed during git operation: {e}")
+
+    def build_projects(
+        self,
+        project_names: List[str] | None,
+        user_profiles: List[str] | None,
+        target: str,
+    ) -> None:
+        """
+        Builds the specified projects for the given profiles in the correct order.
+        """
+        cmake_tool = CMakeTool()
+
+        default_profiles = self.local_settings.get("build_profiles", ["default"])
+        profiles_to_use = (
+            user_profiles if user_profiles is not None else default_profiles
+        )
+
+        projects_to_build = []
+        if project_names:
+            for project in self.projects:
+                if project.name in project_names:
+                    projects_to_build.append(project)
+            found_names = {p.name for p in projects_to_build}
+            missing_names = set(project_names) - found_names
+            if missing_names:
+                raise RuntimeError(
+                    f"Build failed: Unknown projects specified: {', '.join(missing_names)}"
+                )
+        else:
+            projects_to_build = self.projects
+
+        logger.print("\n--- Build Plan ---")
+        for project in projects_to_build:
+            logger.print(f"Project: {project.name}")
+            available_presets = cmake_tool.get_available_presets(project.absolute_path)
+            for profile_name in profiles_to_use:
+                preset_name = profile_name
+                logger.print(f"  Configuration: {preset_name}")
+                if preset_name not in available_presets:
+                    logger.warning(
+                        f"    Preset '{preset_name}' not found for project '{project.name}'. Skipping build."
+                    )
+                    logger.warning(
+                        "    Please run 'puck install' to generate the missing Conan/CMake configuration."
+                    )
+                    continue
+                try:
+                    cmake_tool.build(
+                        project_path=project.absolute_path,
+                        preset_name=preset_name,
+                        build_target=target,
+                    )
+                    logger.print(
+                        f"    SUCCESS: Build for {project.name} ({preset_name}) finished."
+                    )
+                except CMakeToolError as e:
+                    logger.error(
+                        f"Build failed for {project.name} ({preset_name}). Details: {e}"
+                    )
+                    raise RuntimeError("Build process aborted due to previous error.")
 
     @property
     def workspace_root(self) -> Path:

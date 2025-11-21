@@ -76,10 +76,16 @@ def parse_cli_args() -> argparse.Namespace:
         help="Builds the entire workspace in the topologically sorted order.",
     )
     parser_build.add_argument(
-        "--target",
-        type=str,
-        default="all",
-        help="Specific build target (e.g., 'all', 'install', 'test'). Defaults to 'all'.",
+        "--projects",
+        "-p",
+        nargs="+",
+        help="List of specific project names to build (e.g., 'Util Core'). If omitted, all projects are built.",
+    )
+    parser_build.add_argument(
+        "--profiles",
+        nargs="+",
+        default=None,
+        help="List of Conan profiles to use for building (e.g., 'gcc_release clang_debug'). If omitted, all profiles are built.",
     )
 
     return parser.parse_args()
