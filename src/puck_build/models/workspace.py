@@ -343,7 +343,7 @@ class Workspace:
                 if in_degree[dependent_name] == 0:
                     queue.append(dependent_name)
 
-        if len(sorted_list) != len(self.projects):
+        if len(sorted_list) != len(projects):
             cyclic_nodes = [name for name, degree in in_degree.items() if degree > 0]
             raise InvalidWorkspaceConfigError(
                 f"Dependency cycle detected! The following projects are involved and cannot be sorted: "
