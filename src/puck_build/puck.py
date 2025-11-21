@@ -110,7 +110,7 @@ def main():
         workspace = Workspace(start_dir=start_dir)
 
         logger.info("Workspace configuration found and understood:")
-        logger.info(f"`- Workspace root: {workspace.workspace_root}")
+        logger.info(f"  Workspace root: {workspace.workspace_root}")
 
         if args.command == "check":
             logger.debug("command check")
