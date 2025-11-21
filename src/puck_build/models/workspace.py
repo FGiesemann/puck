@@ -62,15 +62,21 @@ class Workspace:
             start_dir (Path): The directory to start the search from.
         """
         self._workspace_root: Path = self._find_workspace_root(start_dir)
+        logger.debug(f"workspace root: {self.workspace_root}")
         raw_config = self._load_config_file()
+        logger.debug("[config loaded]")
         self._validate_config(raw_config)
+        logger.debug("[config validated]")
         self._local_settings: Dict[str, Any] = self._load_local_settings()
+        logger.debug("[local settings loaded]")
         projects: List[Project] = self._process_projects(raw_config)
+        logger.debug("[projects processed]")
         self._sorted_projects: List[Project]
         self._project_map: Dict[str, Project]
         self._sorted_projects, self._project_map = self._analyze_and_sort_graph(
             projects
         )
+        logger.debug("[graph analyzed]")
 
     def setup_workspace(
         self, handling: ExistingPathHandling = ExistingPathHandling.FAIL
