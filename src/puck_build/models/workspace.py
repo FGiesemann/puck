@@ -12,7 +12,8 @@ subprojects in their separate directories and repositories.
 
 from collections import deque
 from pathlib import Path
-from typing import List, Dict, Any, Set, Tuple
+import shutil
+from typing import List, Dict, Any, Tuple
 import json
 from enum import Enum
 
@@ -22,6 +23,8 @@ from puck_build.models.project import (
     OPTIONAL_KEYS,
     Project,
 )
+from puck_build.tools.git import GitTool, GitToolError
+from puck_build.utils.logger import logger
 
 
 class WorkspaceNotFoundError(Exception):
@@ -32,15 +35,12 @@ class InvalidWorkspaceConfigError(ValueError):
     pass
 
 
-class GraphState(Enum):
-    """
-    Defines the states used during the Depth-First Search (DFS)
-    for topological sorting and cycle detection.
-    """
+class ExistingPathHandling(Enum):
+    """Defines how the setup command handles target directories that already exist."""
 
-    UNVISITED = 0
-    VISITING = 1
-    VISITED = 2
+    FAIL = "fail"
+    SKIP = "skip"
+    OVERWRITE = "overwrite"
 
 
 class Workspace:
@@ -70,6 +70,66 @@ class Workspace:
         self._sorted_projects, self._project_map = self._analyze_and_sort_graph(
             projects
         )
+
+    def setup_workspace(
+        self, handling: ExistingPathHandling = ExistingPathHandling.FAIL
+    ) -> None:
+        """
+        Clones or updates all projects that have a defined 'url'.
+
+        Args:
+            skip_existing: If True, skips cloning if the target path exists.
+            overwrite_existing: If True, deletes and re-clones if the target path exists (DANGEROUS).
+
+        Raises:
+            RuntimeError: If a git operation fails or safety checks fail.
+        """
+        git_tool = GitTool(cwd=self.workspace_root)
+        logger.info("Starting workspace setup")
+
+        projects_to_process = []
+        for project in self.projects:
+            if not project.repository_url:
+                continue
+
+            target_path = project.absolute_path
+            if target_path.exists():
+                if handling == ExistingPathHandling.SKIP:
+                    logger.info(f"skipping existing directory for '{project.name}'")
+                    continue
+                elif handling == ExistingPathHandling.OVERWRITE:
+                    logger.info(
+                        f"deleting existing directory for '{project.name}' at {target_path}"
+                    )
+                    shutil.rmtree(target_path)
+                else:
+                    raise RuntimeError(
+                        f"Target directory for '{project.name}' already exists at {target_path}."
+                    )
+            projects_to_process.append(project)
+
+        if not projects_to_process:
+            logger.info(
+                "All repositories are either local or were skipped. Setup finished."
+            )
+            return
+
+        for project in projects_to_process:
+            target_path = project.absolute_path
+
+            logger.info(
+                f"cloning '{project.name}' from {project.url} to {target_path.relative_to(self.workspace_root)}"
+            )
+
+            try:
+                git_tool.clone(
+                    url=project.url,
+                    target_dir=target_path,
+                    recursive=True,
+                )
+
+            except GitToolError as e:
+                raise RuntimeError(f"Setup failed during git operation: {e}")
 
     @property
     def workspace_root(self) -> Path:
@@ -232,6 +292,7 @@ class Workspace:
         Raises:
             InvalidWorkspaceConfigError: If the structure is invalid.
         """
+
         if "projects" not in raw_config:
             raise InvalidWorkspaceConfigError(
                 "Top-level key 'projects' is missing from the configuration."
@@ -264,6 +325,13 @@ class Workspace:
             )
             for key in project_data.keys():
                 if key not in allowed_keys:
-                    print(
-                        f"Warning: Project '{project_data['name']}' contains unknown key '{key}'. Ignoring."
+                    logger.warning(
+                        f"Project '{project_data['name']}' contains unknown key '{key}'. Ignoring."
                     )
+
+
+def print_projects_in_build_order(workspace: Workspace) -> None:
+    for i, project in enumerate(workspace.projects):
+        logger.print(
+            f"  {i + 1}. {project.name} (Path: {project.absolute_path.relative_to(workspace.workspace_root)})"
+        )
