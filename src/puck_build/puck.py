@@ -87,6 +87,12 @@ def parse_cli_args() -> argparse.Namespace:
         default=None,
         help="List of Conan profiles to use for building (e.g., 'gcc_release clang_debug'). If omitted, all profiles are built.",
     )
+    parser_build.add_argument(
+        "--target",
+        type=str,
+        default="all",
+        help="List of targets to build (e.g., 'util core'). If omitted, all targets are built.",
+    )
 
     return parser.parse_args()
 
