@@ -48,8 +48,12 @@ class Project:
         self.depends_on: List[str] = raw_data.get(
             "depends_on", OPTIONAL_DEFAULTS_KEYS["depends_on"]
         )
-        self.respository_url: str | None = raw_data.get("repository_url", None)
+        self._repository_url: str | None = raw_data.get("repository_url", None)
         self._absolute_path: Path = workspace_root / self.path
+
+    @property
+    def repository_url(self) -> str | None:
+        return self._repository_url
 
     @property
     def absolute_path(self) -> Path:
