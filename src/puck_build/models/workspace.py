@@ -50,8 +50,8 @@ class Workspace:
     defines the workspace root directory.
     """
 
-    CONFIG_FILE_NAME = "puck-workspace.json"
-    LOCAL_SETTINGS_FILE_NAME = "puck-local.json"
+    WORKSPACE_CONFIG_FILE_NAME = "puck-workspace.json"
+    LOCAL_BUILD_CONFIG_FILE_NAME = "puck-build.json"
 
     def __init__(self, start_dir: Path) -> None:
         """
@@ -63,12 +63,12 @@ class Workspace:
         """
         self._workspace_root: Path = self._find_workspace_root(start_dir)
         logger.debug(f"workspace root: {self.workspace_root}")
-        raw_config = self._load_config_file()
-        logger.debug("[config loaded]")
+        raw_config = self._load_workspace_config_file()
+        logger.debug("[workspace] validating workspace configuration")
         self._validate_config(raw_config)
         logger.debug("[config validated]")
-        self._local_settings: Dict[str, Any] = self._load_local_settings()
-        logger.debug("[local settings loaded]")
+        self._local_settings: Dict[str, Any] = self._load_local_build_config()
+        logger.debug("[workspace] proccessing projects")
         projects: List[Project] = self._process_projects(raw_config)
         logger.debug("[projects processed]")
         self._sorted_projects: List[Project]
@@ -197,12 +197,12 @@ class Workspace:
     @property
     def workspace_config_path(self) -> Path:
         """Der absolute Pfad zur puck-workspace.json Datei."""
-        return self.workspace_root / self.CONFIG_FILE_NAME
+        return self.workspace_root / self.WORKSPACE_CONFIG_FILE_NAME
 
     @property
     def local_settings_path(self) -> Path:
         """Der absolute Pfad zur .puck-local.json Datei."""
-        return self.workspace_root / self.LOCAL_SETTINGS_FILE_NAME
+        return self.workspace_root / self.LOCAL_BUILD_CONFIG_FILE_NAME
 
     @property
     def local_settings(self) -> Dict[str, Any]:
@@ -219,7 +219,7 @@ class Workspace:
     def _find_workspace_root(self, start_dir: Path) -> Path:
         current_dir = start_dir.resolve()
         while True:
-            config_file_path = current_dir / self.CONFIG_FILE_NAME
+            config_file_path = current_dir / self.WORKSPACE_CONFIG_FILE_NAME
             if config_file_path.is_file():
                 return current_dir
             if current_dir.parent == current_dir:
@@ -228,24 +228,22 @@ class Workspace:
                 )
             current_dir = current_dir.parent
 
-    def _load_config_file(self) -> dict:
+    def _load_workspace_config_file(self) -> dict:
         try:
             with self.workspace_config_path.open(encoding="utf-8") as f:
                 data = json.load(f)
                 return data
-
         except FileNotFoundError:
             raise WorkspaceNotFoundError(
                 f"Could not find workspace configuration file. Expected it at '{self.workspace_config_path}'."
             )
-
         except json.JSONDecodeError as e:
             raise ValueError(
                 f"Error reading workspace configration file '{self.workspace_config_path}': "
                 f"Invalid JSON: {e}"
             )
 
-    def _load_local_settings(self) -> Dict[str, Any]:
+    def _load_local_build_config(self) -> Dict[str, Any]:
         """
         Loads local, non-version-controlled settings from .puck-local.json.
 
