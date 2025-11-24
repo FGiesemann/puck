@@ -217,6 +217,9 @@ class Workspace:
     def project_map(self) -> Dict[str, Project]:
         return self._project_map
 
+    def __getitem__(self, project_name: str) -> Project:
+        return self.project_map[project_name]
+
     def _find_workspace_root(self, start_dir: Path) -> Path:
         current_dir = start_dir.resolve()
         while True:

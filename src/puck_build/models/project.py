@@ -36,29 +36,40 @@ class Project:
             raw_data: The dictionary data for this project from the configuration file.
             workspace_root: The absolute path to the root of the workspace.
         """
-        self.name: str = raw_data["name"]
+        self._name: str = raw_data["name"]
         path_default_func = OPTIONAL_DEFAULTS_KEYS["path"]
-        path_value = raw_data.get(
+        self._path: str = raw_data.get(
             "path",
-            path_default_func(self.name)
+            path_default_func(self._name)
             if callable(path_default_func)
             else path_default_func,
         )
-        self.path: str = path_value
-        self.depends_on: List[str] = raw_data.get(
+        self._absolute_path: Path = workspace_root / self._path
+        self._repository_url: str | None = raw_data.get("repository_url", None)
+        self._depends_on: List[str] = raw_data.get(
             "depends_on", OPTIONAL_DEFAULTS_KEYS["depends_on"]
         )
-        self._repository_url: str | None = raw_data.get("repository_url", None)
-        self._absolute_path: Path = workspace_root / self.path
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def path(self) -> str:
+        return self._path
+
+    @property
+    def absolute_path(self) -> Path:
+        """The absolute path to the project's root directory."""
+        return self._absolute_path
 
     @property
     def repository_url(self) -> str | None:
         return self._repository_url
 
     @property
-    def absolute_path(self) -> Path:
-        """The absolute path to the project's root directory."""
-        return self._absolute_path
+    def depends_on(self) -> List[str]:
+        return self._depends_on
 
     def __repr__(self) -> str:
         return f"Project(name='{self.name}', path='{self.path}')"
