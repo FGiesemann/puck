@@ -61,22 +61,23 @@ class Workspace:
         Args:
             start_dir (Path): The directory to start the search from.
         """
+        logger.debug(f"[workspace] searching puck workspace from {start_dir}")
         self._workspace_root: Path = self._find_workspace_root(start_dir)
-        logger.debug(f"workspace root: {self.workspace_root}")
+        logger.debug(f"[workspace] workspace root: {self.workspace_root}")
         raw_config = self._load_workspace_config_file()
         logger.debug("[workspace] validating workspace configuration")
         self._validate_config(raw_config)
-        logger.debug("[config validated]")
+        logger.debug("[workspace] loading local build configuration")
         self._local_settings: Dict[str, Any] = self._load_local_build_config()
         logger.debug("[workspace] proccessing projects")
         projects: List[Project] = self._process_projects(raw_config)
-        logger.debug("[projects processed]")
+        logger.debug("[workspace] analyzing project dependencies")
         self._sorted_projects: List[Project]
         self._project_map: Dict[str, Project]
         self._sorted_projects, self._project_map = self._analyze_and_sort_graph(
             projects
         )
-        logger.debug("[graph analyzed]")
+        logger.debug("[workspace] initialization done")
 
     def setup_workspace(
         self, handling: ExistingPathHandling = ExistingPathHandling.FAIL
