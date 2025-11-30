@@ -178,57 +178,56 @@ class Workspace:
             except GitToolError as e:
                 raise RuntimeError(f"Setup failed during git operation: {e}")
 
-    def build_projects(
-        self,
-        project_names: Optional[List[str]],
-        user_profiles: Optional[List[str]],
-        target: str,
-    ) -> None:
+    def build_projects(self, profile_names: List[str], target: str) -> None:
         """
-        Builds the specified projects for the given profiles in the correct order.
+        Executes 'cmake --build' for all projects in the correct build order,
+        using the specified profiles and target.
         """
         cmake_tool = CMakeTool()
 
-        default_profiles = self.local_settings.get("profiles", ["default"])
-        profiles_to_use = (
-            user_profiles if user_profiles is not None else default_profiles
-        )
+        for project in self.projects:
+            logger.info(f"Building project: **{project.name}**")
 
-        projects_to_build = []
-        if project_names:
-            for project in self.projects:
-                if project.name in project_names:
-                    projects_to_build.append(project)
-            found_names = {p.name for p in projects_to_build}
-            missing_names = set(project_names) - found_names
-            if missing_names:
-                raise RuntimeError(
-                    f"Build failed: Unknown projects specified: {', '.join(missing_names)}"
-                )
-        else:
-            projects_to_build = self.projects
+            for profile_name in profile_names:
+                profile = self.resolved_profiles.get(profile_name)
 
-        logger.print("\n--- Build Plan ---")
-        for project in projects_to_build:
-            logger.print(f"Project: {project.name}")
+                if not profile:
+                    raise ValueError(f"Profile '{profile_name}' not found or resolved.")
 
-            for profile_name in profiles_to_use:
-                preset_name = profile_name
-                logger.print(f"  Configuration: {preset_name}")
+                logger.debug(f"  Using build profile: {profile_name}")
+
+                preset_name = profile.build.config
+                explicit_build_dir = profile.build_directory
+
+                build_path_to_use = None
+                if preset_name:
+                    logger.debug(f"  Build Mode: Preset ('{preset_name}')")
+                elif explicit_build_dir:
+                    build_path_to_use = explicit_build_dir
+                    logger.debug(f"  Build Mode: Directory ('{build_path_to_use}')")
+                else:
+                    logger.warning(
+                        f"Profile '{profile_name}' for project '{project.name}' is incomplete "
+                        f"(missing 'build.config' and 'build_directory'). Skipping build."
+                    )
+                    continue
+
                 try:
                     cmake_tool.build(
-                        project_path=project.absolute_path,
+                        project_path=project.path,
                         preset_name=preset_name,
+                        build_path=build_path_to_use,
                         build_target=target,
                     )
-                    logger.print(
-                        f"    SUCCESS: Build for {project.name} ({preset_name}) finished."
+                    logger.info(
+                        f"  SUCCESS: Build finished for {project.name} ({profile_name})."
                     )
+
                 except CMakeToolError as e:
                     logger.error(
-                        f"Build failed for {project.name} ({preset_name}). Details: {e}"
+                        f"Critical error during CMake build for {project.name} ({profile_name}): {e}"
                     )
-                    raise RuntimeError("Build process aborted due to previous error.")
+                    raise RuntimeError("Build process aborted.")
 
     @property
     def workspace_root(self) -> Path:
