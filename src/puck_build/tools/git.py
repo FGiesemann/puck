@@ -11,6 +11,7 @@ Git operations.
 
 import subprocess
 from pathlib import Path
+from typing import List
 from puck_build.utils.logger import logger
 
 
@@ -21,14 +22,33 @@ class GitToolError(Exception):
 
 
 class GitTool:
+    def __init__(self, dry_run: bool):
+        self._dry_run = dry_run
+
+    def _execute(self, command: List[str], cwd: Path):
+        """Internal helper to either execute or log the command."""
+        command_str = " ".join(command)
+
+        if self._dry_run:
+            logger.print(
+                f"[GIT] Executing: {command_str} in directory {cwd.as_posix()}"
+            )
+            return
+
+        logger.debug(f"Executing: {command_str} in directory {cwd.as_posix()}")
+        subprocess.run(command, check=True, cwd=cwd)
+
     def clone_repo(self, url: str, target_dir: Path) -> None:
         """Clones a repository recursively into the target directory."""
         # --recursive is crucial for submodules
+        if not self._dry_run:
+            target_dir.parent.mkdir(parents=True, exist_ok=True)
+
         command = ["git", "clone", "--recursive", url, target_dir.as_posix()]
         logger.debug(f"Executing: {' '.join(command)}")
 
         try:
-            subprocess.run(command, check=True)
+            self._execute(command, Path("."))
         except subprocess.CalledProcessError as e:
             raise GitToolError(
                 f"Git clone failed with return code {e.returncode} for {url}."
@@ -44,10 +64,9 @@ class GitTool:
         submodule_command = ["git", "submodule", "update", "--init", "--recursive"]
 
         try:
-            subprocess.run(fetch_command, check=True, cwd=repo_dir)
-            subprocess.run(pull_command, check=True, cwd=repo_dir)
-            subprocess.run(submodule_command, check=True, cwd=repo_dir)
-
+            self._execute(fetch_command, cwd=repo_dir)
+            self._execute(pull_command, cwd=repo_dir)
+            self._execute(submodule_command, cwd=repo_dir)
         except subprocess.CalledProcessError as e:
             raise GitToolError(
                 f"Git update failed in {repo_dir.name} with return code {e.returncode}."
@@ -66,14 +85,11 @@ class GitTool:
         submodule_command = ["git", "submodule", "update", "--init", "--recursive"]
 
         try:
-            subprocess.run(["git", "fetch", "--all"], check=True, cwd=repo_dir)
-            subprocess.run(stash_command, check=False, cwd=repo_dir)
-            subprocess.run(reset_command, check=True, cwd=repo_dir)
-            subprocess.run(clean_command, check=True, cwd=repo_dir)
-            subprocess.run(submodule_command, check=True, cwd=repo_dir)
-
-            logger.debug(f"  Successfully cleaned and reset {repo_dir.name}.")
-
+            self._execute(["git", "fetch", "--all"], cwd=repo_dir)
+            self._execute(stash_command, cwd=repo_dir)
+            self._execute(reset_command, cwd=repo_dir)
+            self._execute(clean_command, cwd=repo_dir)
+            self._execute(submodule_command, cwd=repo_dir)
         except subprocess.CalledProcessError as e:
             raise GitToolError(
                 f"Git clean failed in {repo_dir.name} with return code {e.returncode}."

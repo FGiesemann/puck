@@ -13,6 +13,8 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 
+from puck_build.utils.logger import logger
+
 
 class CMakeToolError(Exception):
     """Custom exception for CMake tool failures."""
@@ -21,6 +23,22 @@ class CMakeToolError(Exception):
 
 
 class CMakeTool:
+    def __init__(self, dry_run: bool):
+        self._dry_run = dry_run
+
+    def _execute(self, command: List[str], cwd: Path):
+        """Internal helper to either execute or log the command."""
+        command_str = " ".join(command)
+
+        if self._dry_run:
+            logger.print(
+                f"[CMAKE] Executing: {command_str} in directory {cwd.as_posix()}"
+            )
+            return
+
+        logger.debug(f"Executing: {command_str} in directory {cwd.as_posix()}")
+        subprocess.run(command, check=True, cwd=cwd)
+
     def build(
         self,
         project_path: Path,
@@ -45,9 +63,8 @@ class CMakeTool:
         command.extend(["--target", build_target])
 
         try:
-            subprocess.run(
+            self._execute(
                 command,
-                check=True,
                 cwd=project_path,
             )
         except subprocess.CalledProcessError as e:

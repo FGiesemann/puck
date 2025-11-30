@@ -62,13 +62,14 @@ class Workspace:
     WORKSPACE_CONFIG_FILE_NAME = "puck-workspace.json"
     LOCAL_BUILD_CONFIG_FILE_NAME = "puck-build.json"
 
-    def __init__(self, start_dir: Path) -> None:
+    def __init__(self, start_dir: Path, dry_run: bool = False) -> None:
         """
         Initializes the workspace. Searches for the workspace configuration file
         beginning from the given directory.
 
         Args:
             start_dir (Path): The directory to start the search from.
+            dry_run (bool): Print commands instead of executing them
         """
         logger.debug(f"[workspace] searching puck workspace from {start_dir}")
         self._workspace_root: Path = self._find_workspace_root(start_dir)
@@ -76,6 +77,7 @@ class Workspace:
         self._load_configs()
         self.resolved_profiles = self._resolve_build_profiles()
         self._create_projects_from_config()
+        self._dry_run = dry_run
 
         self._sorted_projects = self._topological_sort()
 
@@ -84,7 +86,7 @@ class Workspace:
         Executes 'conan install' for all projects in the correct build order,
         using the specified profiles.
         """
-        conan_tool = ConanTool()
+        conan_tool = ConanTool(self._dry_run)
 
         for project in self.projects:
             logger.info(f"Installing dependencies for project: **{project.name}**")
@@ -122,7 +124,7 @@ class Workspace:
         Clones or updates all defined sub-projects in the workspace.
         Considers the project path and handles submodules recursively.
         """
-        git_tool = GitTool()
+        git_tool = GitTool(self._dry_run)
 
         for p_def in self.workspace_config.projects:
             project_name = p_def.name
@@ -167,7 +169,7 @@ class Workspace:
         Executes 'cmake --build' for all projects in the correct build order,
         using the specified profiles and target.
         """
-        cmake_tool = CMakeTool()
+        cmake_tool = CMakeTool(self._dry_run)
 
         for project in self.projects:
             logger.info(f"Building project: **{project.name}**")

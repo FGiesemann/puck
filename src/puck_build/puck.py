@@ -25,6 +25,12 @@ def main():
         default=0,
         help="Increase logging verbosity (e.g., -v for INFO, -vv for VERBOSE, -vvv for DEBUG).",
     )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Do not execute commands; print what would be done instead.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -99,7 +105,7 @@ def main():
     logger = Logger(calculated_log_level)
 
     try:
-        workspace = Workspace(start_dir=Path.cwd())
+        workspace = Workspace(start_dir=Path.cwd(), dry_run=args.dry_run)
     except Exception as e:
         logger.error(f"Failed to initialize workspace: {e}")
         sys.exit(1)
