@@ -1,3 +1,14 @@
+# puck_build/tools/git.py
+#
+# Puck - Build Manager for Modular C++-Projects
+#
+# Copyright (c) 2025 Florian Giesemann
+# This file is distributed under the terms of the MIT License
+
+"""
+Git operations.
+"""
+
 from pathlib import Path
 import subprocess
 from typing import List
