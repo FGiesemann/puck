@@ -118,65 +118,50 @@ class Workspace:
                     )
                     raise RuntimeError("Installation process aborted.")
 
-    def setup_workspace(
-        self, handling: ExistingPathHandling = ExistingPathHandling.FAIL
-    ) -> None:
+    def setup_projects(self, clean: bool = False) -> None:
         """
-        Clones or updates all projects that have a defined 'url'.
-
-        Args:
-            skip_existing: If True, skips cloning if the target path exists.
-            overwrite_existing: If True, deletes and re-clones if the target path exists (DANGEROUS).
-
-        Raises:
-            RuntimeError: If a git operation fails or safety checks fail.
+        Clones or updates all defined sub-projects in the workspace.
+        Considers the project path and handles submodules recursively.
         """
-        git_tool = GitTool(cwd=self.workspace_root)
-        logger.info("Starting workspace setup")
+        git_tool = GitTool()
 
-        projects_to_process = []
-        for project in self.projects:
-            if not project.repository_url:
+        for p_def in self.workspace_config.projects:
+            project_name = p_def.name
+            repository_url = p_def.repository_url
+
+            if not repository_url:
+                logger.warning(
+                    f"Project '{project_name}' has no 'repository_url'. Skipping setup."
+                )
                 continue
 
-            target_path = project.absolute_path
-            if target_path.exists():
-                if handling == ExistingPathHandling.SKIP:
-                    logger.info(f"skipping existing directory for '{project.name}'")
-                    continue
-                elif handling == ExistingPathHandling.OVERWRITE:
-                    logger.info(
-                        f"deleting existing directory for '{project.name}' at {target_path}"
-                    )
-                    shutil.rmtree(target_path)
-                else:
-                    raise RuntimeError(
-                        f"Target directory for '{project.name}' already exists at {target_path}."
-                    )
-            projects_to_process.append(project)
-
-        if not projects_to_process:
-            logger.info(
-                "All repositories are either local or were skipped. Setup finished."
-            )
-            return
-
-        for project in projects_to_process:
-            target_path = project.absolute_path
+            project_dir_name = p_def.path if p_def.path else p_def.name
+            target_dir = self.workspace_root / project_dir_name
 
             logger.info(
-                f"cloning '{project.name}' from {project.url} to {target_path.relative_to(self.workspace_root)}"
+                f"Setting up project: **{project_name}** at {target_dir.relative_to(self.workspace_root)}"
             )
 
             try:
-                git_tool.clone(
-                    url=project.url,
-                    target_dir=target_path,
-                    recursive=True,
-                )
+                if target_dir.exists():
+                    if clean:
+                        git_tool.clean_repo(repo_dir=target_dir)
+                        logger.info(
+                            f"  SUCCESS: Aggressively reset and cleaned {project_name}."
+                        )
+                    else:
+                        logger.debug("Directory exists, updating repository...")
+                        git_tool.update_repo(repo_dir=target_dir)
+                        logger.info(f"  SUCCESS: Updated {project_name}.")
+                else:
+                    logger.debug("Directory does not exist, cloning repository...")
+                    target_dir.parent.mkdir(parents=True, exist_ok=True)
+                    git_tool.clone_repo(url=repository_url, target_dir=target_dir)
+                    logger.info(f"  SUCCESS: Cloned {project_name}.")
 
             except GitToolError as e:
-                raise RuntimeError(f"Setup failed during git operation: {e}")
+                logger.error(f"Critical Git error during setup for {project_name}: {e}")
+                raise RuntimeError("Setup process aborted due to Git error.")
 
     def build_projects(self, profile_names: List[str], target: str) -> None:
         """
