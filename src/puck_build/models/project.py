@@ -10,14 +10,7 @@ Defines the project model class that describes a subproject in a workspace.
 """
 
 from pathlib import Path
-from typing import List, Dict, Any, Union, Callable
-
-REQUIRED_PROJECT_KEYS: List[str] = ["name"]
-OPTIONAL_DEFAULTS_KEYS: Dict[str, Union[Any, Callable[[str], str]]] = {
-    "path": lambda name: name,
-    "depends_on": [],
-}
-OPTIONAL_KEYS: List[str] = ["repository_url"]
+from typing import List
 
 
 class Project:
