@@ -305,7 +305,7 @@ class Workspace:
         )
 
         logger.debug("Processing local build profiles")
-        for entry in self.local_build_config.active_profiles:
+        for entry in self.local_build_config.profiles:
             if isinstance(entry, str):
                 # Reference to a profile by name
                 logger.debug(f"Referencing global build profile: {entry}")

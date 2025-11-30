@@ -51,7 +51,7 @@ class GlobalConfig:
 class LocalBuildConfig:
     """The local puck-build.json in a workspace."""
 
-    active_profiles: List[Dict[str, Any]] = field(default_factory=list)
+    profiles: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
