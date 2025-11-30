@@ -42,3 +42,27 @@ class Logger:
 
 
 logger = Logger(LogLevel.INFO)
+
+
+def calculate_log_level(verbosity_count: int) -> LogLevel:
+    """
+    Calculates the desired LogLevel based on the number of -v flags.
+
+    Default Level: WARNING
+    -v (count=1): INFO
+    -vv (count=2): VERBOSE
+    -vvv (count=3): DEBUG
+    """
+
+    initial_level_value = LogLevel.WARNING.value
+
+    target_value = initial_level_value + verbosity_count
+
+    max_value = LogLevel.DEBUG.value
+    final_value = min(target_value, max_value)
+
+    for level in LogLevel:
+        if level.value == final_value:
+            return level
+
+    return LogLevel.WARNING
