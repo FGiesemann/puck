@@ -11,8 +11,7 @@ subprojects in their separate directories and repositories.
 """
 
 from pathlib import Path
-import shutil
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import json
 from enum import Enum
 
@@ -231,19 +230,8 @@ class Workspace:
         return Path.home() / ".puck" / "build-config.json"
 
     @property
-    def local_settings(self) -> Dict[str, Any]:
-        return self._local_settings
-
-    @property
     def projects(self) -> List[Project]:
         return self._sorted_projects
-
-    @property
-    def project_map(self) -> Dict[str, Project]:
-        return self._project_map
-
-    def __getitem__(self, project_name: str) -> Project:
-        return self.project_map[project_name]
 
     def _find_workspace_root(self, start_dir: Path) -> Path:
         current_dir = start_dir.resolve()

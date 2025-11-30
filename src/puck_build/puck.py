@@ -9,7 +9,7 @@ import argparse
 import sys
 from pathlib import Path
 from puck_build.models.workspace import Workspace
-from puck_build.utils.logger import Logger, calculate_log_level, logger
+from puck_build.utils.logger import Logger, calculate_log_level
 
 
 def main():

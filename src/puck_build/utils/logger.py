@@ -1,3 +1,14 @@
+# puck_build/utils/logger.py
+#
+# Puck - Build Manager for Modular C++-Projects
+#
+# Copyright (c) 2025 Florian Giesemann
+# This file is distributed under the terms of the MIT License
+
+"""
+Logging output with different levels.
+"""
+
 from enum import Enum
 
 
