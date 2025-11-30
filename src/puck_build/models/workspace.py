@@ -24,6 +24,7 @@ from puck_build.models.config import (
 )
 from puck_build.models.project import Project
 from puck_build.tools.cmake import CMakeTool, CMakeToolError
+from puck_build.tools.conan import ConanTool
 from puck_build.tools.git import GitTool, GitToolError
 from puck_build.utils.config_loader import deserialize_config
 from puck_build.utils.logger import logger
@@ -78,6 +79,44 @@ class Workspace:
         self._create_projects_from_config()
 
         self._sorted_projects = self._topological_sort()
+
+    def install_projects(self, profile_names: List[str]) -> None:
+        """
+        Executes 'conan install' for all projects in the correct build order,
+        using the specified profiles.
+        """
+        conan_tool = ConanTool()
+
+        for project in self.projects:
+            logger.info(f"Installing dependencies for project: **{project.name}**")
+            for profile_name in profile_names:
+                profile = self.resolved_profiles.get(profile_name)
+
+                if not profile:
+                    raise ValueError(f"Profile '{profile_name}' not found or resolved.")
+
+                logger.debug(f"  Using build profile: {profile_name}")
+                try:
+                    # target folder (--output-folder) will only be used, when the user defines it explicitly in the project configuration.
+                    # Otherwise, the default build folder as dictated by the conan profile/settings will be used
+                    install_folder = profile.build_directory
+
+                    conan_tool.install(
+                        project_path=project.path,
+                        conan_profile_name=profile.conan.profile_name,
+                        settings=profile.conan.settings,
+                        install_folder=install_folder,
+                        # TODO: Add e.g., --build=missing
+                    )
+                    logger.info(
+                        f"  SUCCESS: Conan install finished for {project.name} ({profile_name})."
+                    )
+
+                except Exception as e:
+                    logger.error(
+                        f"Critical error during Conan install for {project.name} ({profile_name}): {e}"
+                    )
+                    raise RuntimeError("Installation process aborted.")
 
     def setup_workspace(
         self, handling: ExistingPathHandling = ExistingPathHandling.FAIL
