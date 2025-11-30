@@ -9,7 +9,7 @@ import argparse
 import sys
 from pathlib import Path
 from puck_build.models.workspace import Workspace
-from puck_build.utils.logger import Logger, calculate_log_level
+from puck_build.utils.logger import logger, calculate_log_level
 
 
 def main():
@@ -101,8 +101,7 @@ def main():
     args = parser.parse_args()
 
     calculated_log_level = calculate_log_level(args.verbose)
-    global logger
-    logger = Logger(calculated_log_level)
+    logger.set_level(calculated_log_level)
 
     try:
         workspace = Workspace(start_dir=Path.cwd(), dry_run=args.dry_run)

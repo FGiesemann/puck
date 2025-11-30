@@ -33,6 +33,9 @@ class Logger:
             prefix = level.name
             print(f"[{prefix:<7}] {message}")
 
+    def set_level(self, min_level: LogLevel):
+        self.min_level = min_level
+
     def print(self, message: str):
         print(message)
 
