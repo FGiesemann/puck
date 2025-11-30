@@ -13,7 +13,9 @@ authors = [
     {name = "Puck Developer", email = "nobody@example.com"},
 ]
 keywords = ["conan", "cmake", "build", "project-management", "cxx", "puck"]
-dependencies = []
+dependencies = [
+    "dacite>=1.8.0",
+]
 
 [project.scripts]
 puck = "puck_build.puck:main"

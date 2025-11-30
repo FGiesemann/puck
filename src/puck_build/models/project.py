@@ -26,36 +26,29 @@ class Project:
     Handles applying default values for optional fields and calculating absolute paths.
     """
 
-    def __init__(self, raw_data: Dict[str, Any], workspace_root: Path):
+    def __init__(
+        self,
+        name: str,
+        path: Path,
+        repository_url: str | None,
+        depends_on: List[str] = [],
+    ):
         """
         Initializes a Project instance.
-
-        Assumes raw_data has passed the structural validation in Workspace._validate_config.
-
-        Args:
-            raw_data: The dictionary data for this project from the configuration file.
-            workspace_root: The absolute path to the root of the workspace.
         """
-        self._name: str = raw_data["name"]
-        path_default_func = OPTIONAL_DEFAULTS_KEYS["path"]
-        self._path: str = raw_data.get(
-            "path",
-            path_default_func(self._name)
-            if callable(path_default_func)
-            else path_default_func,
-        )
-        self._absolute_path: Path = workspace_root / self._path
-        self._repository_url: str | None = raw_data.get("repository_url", None)
-        self._depends_on: List[str] = raw_data.get(
-            "depends_on", OPTIONAL_DEFAULTS_KEYS["depends_on"]
-        )
+        self._name = name
+        self._path = path
+        self._repository_url = repository_url
+        self._depends_on = depends_on
+
+        self._absolute_path = self.path.resolve()
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def path(self) -> str:
+    def path(self) -> Path:
         return self._path
 
     @property
