@@ -250,7 +250,10 @@ class Workspace:
     def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
         """Reads and parses a JSON file; return an empty dict in case of a missing optional file."""
         if not file_path.exists():
-            if file_path.name == self.WORKSPACE_CONFIG_FILE_NAME:
+            if (
+                file_path.name == self.WORKSPACE_CONFIG_FILE_NAME
+                or file_path.name == self.LOCAL_BUILD_CONFIG_FILE_NAME
+            ):
                 raise FileNotFoundError(
                     f"Mandatory configuration file not found: {file_path}"
                 )
