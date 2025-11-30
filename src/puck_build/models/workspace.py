@@ -272,14 +272,17 @@ class Workspace:
     def _load_configs(self) -> None:
         """Loads all configuration files used by puck."""
 
+        logger.debug(f"Loading workspace config from {self.workspace_config_path}")
         workspace_data = self._load_json_file(self.workspace_config_path)
         self.workspace_config: WorkspaceConfig = deserialize_config(
             workspace_data, WorkspaceConfig
         )
 
+        logger.debug(f"Loading local build config from {self.local_build_config_path}")
         local_build_data = self._load_json_file(self.local_build_config_path)
         self.local_build_config = deserialize_config(local_build_data, LocalBuildConfig)
 
+        logger.debug(f"Loading global build config from {self.global_config_path}")
         global_config_data = self._load_json_file(self.global_config_path)
         self.global_config: GlobalConfig = deserialize_config(
             global_config_data, GlobalConfig
@@ -289,15 +292,23 @@ class Workspace:
         """
         Resolves the active build profiles by loading global definitions and
         overwriting them with local ad-hoc definitions from .puck-build.json.
+
         """
+        logger.debug("Resolving build profiles")
+
         resolved_profiles: Dict[str, BuildProfile] = {}
 
         for global_profile in self.global_config.profiles:
             resolved_profiles[global_profile.name] = global_profile
+        logger.debug(
+            f"Found {len(resolved_profiles)} global profiles: {list(resolved_profiles.keys())}"
+        )
 
+        logger.debug("Processing local build profiles")
         for entry in self.local_build_config.active_profiles:
             if isinstance(entry, str):
                 # Reference to a profile by name
+                logger.debug(f"Referencing global build profile: {entry}")
                 profile_name = entry
                 if profile_name not in resolved_profiles:
                     raise ValueError(
@@ -311,6 +322,7 @@ class Workspace:
                     raise ValueError(
                         f"Ad-hoc profile in '{self.local_build_config_path}' is missing the mandatory 'name' key."
                     )
+                logger.debug(f"Found local ad-hoc profile: {entry['name']}")
                 ad_hoc_profile = deserialize_config(entry, BuildProfile)
                 resolved_profiles[ad_hoc_profile.name] = ad_hoc_profile
                 logger.debug(
@@ -320,6 +332,9 @@ class Workspace:
                 logger.warning(
                     f"Unknown entry type in active profiles array: {entry}. Entry will be ignored."
                 )
+        logger.debug(
+            f"Resolved {len(resolved_profiles)} build profiles: {list(resolved_profiles.keys())}"
+        )
         return resolved_profiles
 
     def _create_projects_from_config(self) -> None:
