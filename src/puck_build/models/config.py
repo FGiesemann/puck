@@ -17,15 +17,15 @@ from typing import List, Dict, Optional, Any
 class ConanConfig:
     """Models the 'conan' section of a build profile."""
 
-    profile_name: str
-    settings: Dict[str, Any] = field(default_factory=dict)
+    profile_name: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
 class BuildConfig:
     """Models the 'build' section of a build profile."""
 
-    tool: str
+    tool: Optional[str] = None
     config: Optional[str] = None  # CMake Preset Name, Bazel Target, etc.
 
 

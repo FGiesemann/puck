@@ -33,8 +33,8 @@ class Project:
         self._name = name
         self._path = path
         self._repository_url = repository_url
-        self._conan_editable = conan_editable if conan_editable else False
         self._depends_on = depends_on
+        self._conan_editable = conan_editable if conan_editable else False
 
         self._absolute_path = self.path.resolve()
 

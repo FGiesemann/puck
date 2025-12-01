@@ -98,6 +98,16 @@ def main():
 
     build_parser.set_defaults(func=execute_build)
 
+    check_parser = subparsers.add_parser(
+        "check",
+        help="Analyzes and prints the resolved configuration state (profiles, build order).",
+    )
+
+    def execute_check(args, ws):
+        ws.check_config()
+
+    check_parser.set_defaults(func=execute_check)
+
     args = parser.parse_args()
 
     calculated_log_level = calculate_log_level(args.verbose)
