@@ -53,7 +53,7 @@ class GlobalConfig:
 class LocalBuildConfig:
     """The local puck-build.json in a workspace."""
 
-    profiles: List[Dict[str, Any]] = field(default_factory=list)
+    profiles: List[Dict[str, Any] | str] = field(default_factory=list)
 
 
 @dataclass
@@ -63,7 +63,7 @@ class ProjectDefinition:
     name: str
     path: str = ""
     repository_url: Optional[str] = None
-    dependencies: List[str] = field(default_factory=list)
+    depends_on: List[str] = field(default_factory=list)
     conan_editable: Optional[bool] = False
 
 

@@ -28,7 +28,7 @@ from puck_build.tools.cmake import CMakeTool, CMakeToolError
 from puck_build.tools.conan import ConanTool
 from puck_build.tools.git import GitTool, GitToolError
 from puck_build.utils.config_loader import deserialize_config
-from puck_build.utils.logger import logger
+from puck_build.utils.logger import LogLevel, logger
 
 
 class WorkspaceNotFoundError(Exception):
@@ -237,6 +237,45 @@ class Workspace:
                     )
                     raise RuntimeError("Build process aborted.")
 
+    def check_config(self) -> None:
+        """
+        Analyzes the workspace configuration and prints the resolved state
+        (profiles and project build order).
+        """
+        logger.print("## 1. Resolved Build Profiles")
+        if not self.resolved_profiles:
+            logger.warning("No build profiles found in local or global configuration.")
+        else:
+            for name, profile in self.resolved_profiles.items():
+                logger.print(f"  - {name}")
+                settings_count = len(profile.conan.settings)
+                inherits = (
+                    profile.inherits_from
+                    if hasattr(profile, "inherits_from") and profile.inherits_from
+                    else "None"
+                )
+
+                logger.print(
+                    f"    Settings keys: {settings_count}, Inherits from: {inherits}"
+                )
+                if logger.min_level.value >= LogLevel.VERBOSE.value:
+                    logger.print(f"    [SETTINGS] {dict(profile.conan.settings)}")
+
+        logger.print("\n## 2. Project Build Order")
+        if not self.projects:
+            logger.warning("No projects defined in workspace configuration.")
+        else:
+            for i, project in enumerate(self.projects):
+                path = project.path
+                editable_status = " (EDITABLE)" if project.conan_editable else ""
+
+                logger.print(
+                    f"  {i + 1}. {project.name}{editable_status} [Path: {path.relative_to(self.workspace_root)}]"
+                )
+
+                if logger.min_level.value >= LogLevel.VERBOSE.value:
+                    logger.print(f"     Depends on: {', '.join(project.depends_on)}")
+
     def _ensure_editable_packages_added(self, conan_tool: ConanTool):
         """
         Ensures that all projects with 'conan_editable: true' in the workspace
@@ -382,7 +421,8 @@ class Workspace:
                 name=p_def.name,
                 path=self._get_project_path(p_def),
                 repository_url=p_def.repository_url,
-                depends_on=p_def.dependencies,
+                depends_on=p_def.depends_on,
+                conan_editable=p_def.conan_editable,
             )
             self._projects[project.name] = project
         logger.debug(f"Successfully loaded {len(self._projects)} projects.")
