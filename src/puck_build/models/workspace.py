@@ -10,6 +10,7 @@ Defines the workspace model class which represent a main project that contains
 subprojects in their separate directories and repositories.
 """
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import List, Dict, Any
 import json
@@ -19,6 +20,7 @@ from puck_build.models.config import (
     BuildProfile,
     GlobalConfig,
     LocalBuildConfig,
+    ProjectDefinition,
     WorkspaceConfig,
 )
 from puck_build.models.project import Project
@@ -78,46 +80,27 @@ class Workspace:
         self.resolved_profiles = self._resolve_build_profiles()
         self._create_projects_from_config()
         self._dry_run = dry_run
-
         self._sorted_projects = self._topological_sort()
 
-    def install_projects(self, profile_names: List[str]) -> None:
-        """
-        Executes 'conan install' for all projects in the correct build order,
-        using the specified profiles.
-        """
-        conan_tool = ConanTool(self._dry_run)
+    @property
+    def workspace_root(self) -> Path:
+        return self._workspace_root
 
-        for project in self.projects:
-            logger.info(f"Installing dependencies for project: **{project.name}**")
-            for profile_name in profile_names:
-                profile = self.resolved_profiles.get(profile_name)
+    @property
+    def workspace_config_path(self) -> Path:
+        return self.workspace_root / self.WORKSPACE_CONFIG_FILE_NAME
 
-                if not profile:
-                    raise ValueError(f"Profile '{profile_name}' not found or resolved.")
+    @property
+    def local_build_config_path(self) -> Path:
+        return self.workspace_root / self.LOCAL_BUILD_CONFIG_FILE_NAME
 
-                logger.debug(f"  Using build profile: {profile_name}")
-                try:
-                    # target folder (--output-folder) will only be used, when the user defines it explicitly in the project configuration.
-                    # Otherwise, the default build folder as dictated by the conan profile/settings will be used
-                    install_folder = profile.build_directory
+    @property
+    def global_config_path(self) -> Path:
+        return Path.home() / ".puck" / "build-config.json"
 
-                    conan_tool.install(
-                        project_path=project.path,
-                        conan_profile_name=profile.conan.profile_name,
-                        settings=profile.conan.settings,
-                        install_folder=install_folder,
-                        # TODO: Add e.g., --build=missing
-                    )
-                    logger.info(
-                        f"  SUCCESS: Conan install finished for {project.name} ({profile_name})."
-                    )
-
-                except Exception as e:
-                    logger.error(
-                        f"Critical error during Conan install for {project.name} ({profile_name}): {e}"
-                    )
-                    raise RuntimeError("Installation process aborted.")
+    @property
+    def projects(self) -> List[Project]:
+        return self._sorted_projects
 
     def setup_projects(self, clean: bool = False) -> None:
         """
@@ -125,6 +108,7 @@ class Workspace:
         Considers the project path and handles submodules recursively.
         """
         git_tool = GitTool(self._dry_run)
+        conan_tool = ConanTool(self._dry_run)
 
         for p_def in self.workspace_config.projects:
             project_name = p_def.name
@@ -159,10 +143,48 @@ class Workspace:
                     target_dir.parent.mkdir(parents=True, exist_ok=True)
                     git_tool.clone_repo(url=repository_url, target_dir=target_dir)
                     logger.info(f"  SUCCESS: Cloned {project_name}.")
-
             except GitToolError as e:
                 logger.error(f"Critical Git error during setup for {project_name}: {e}")
                 raise RuntimeError("Setup process aborted due to Git error.")
+        self._ensure_editable_packages_added(conan_tool)
+
+    def install_projects(self, profile_names: List[str]) -> None:
+        """
+        Executes 'conan install' for all projects in the correct build order,
+        using the specified profiles.
+        """
+        conan_tool = ConanTool(self._dry_run)
+        self._ensure_editable_packages_added(conan_tool)
+        for project in self.projects:
+            logger.info(f"Installing dependencies for project: **{project.name}**")
+            for profile_name in profile_names:
+                profile = self.resolved_profiles.get(profile_name)
+
+                if not profile:
+                    raise ValueError(f"Profile '{profile_name}' not found or resolved.")
+
+                logger.debug(f"  Using build profile: {profile_name}")
+                try:
+                    # target folder (--output-folder) will only be used, when the user defines it explicitly in the project configuration.
+                    # Otherwise, the default build folder as dictated by the conan profile/settings will be used
+                    install_folder = profile.build_directory
+
+                    conan_tool.install(
+                        project_path=project.path,
+                        conan_profile_name=profile.conan.profile_name,
+                        settings=profile.conan.settings,
+                        install_folder=install_folder,
+                        # TODO: Add e.g., --build=missing
+                    )
+                    logger.info(
+                        f"  SUCCESS: Conan install finished for {project.name} ({profile_name})."
+                    )
+
+                except Exception as e:
+                    logger.error(
+                        f"Critical error during Conan install for {project.name} ({profile_name}): {e}"
+                    )
+                    raise RuntimeError("Installation process aborted.")
 
     def build_projects(self, profile_names: List[str], target: str) -> None:
         """
@@ -215,25 +237,21 @@ class Workspace:
                     )
                     raise RuntimeError("Build process aborted.")
 
-    @property
-    def workspace_root(self) -> Path:
-        return self._workspace_root
+    def _ensure_editable_packages_added(self, conan_tool: ConanTool):
+        """
+        Ensures that all projects with 'conan_editable: true' in the workspace
+        config are added as editable packages to the conan cache.
+        """
+        for p_def in self.workspace_config.projects:
+            if p_def.conan_editable:
+                project_path = self._get_project_path(p_def)
 
-    @property
-    def workspace_config_path(self) -> Path:
-        return self.workspace_root / self.WORKSPACE_CONFIG_FILE_NAME
+                logger.debug(
+                    f"Checking editable status for {p_def.name} at {project_path.name}"
+                )
 
-    @property
-    def local_build_config_path(self) -> Path:
-        return self.workspace_root / self.LOCAL_BUILD_CONFIG_FILE_NAME
-
-    @property
-    def global_config_path(self) -> Path:
-        return Path.home() / ".puck" / "build-config.json"
-
-    @property
-    def projects(self) -> List[Project]:
-        return self._sorted_projects
+                conan_tool.add_editable(project_path=project_path)
+                logger.debug(f"Ensured {p_def.name} is added as editable.")
 
     def _find_workspace_root(self, start_dir: Path) -> Path:
         current_dir = start_dir.resolve()
@@ -246,28 +264,6 @@ class Workspace:
                     f"Could not find workspace configuration file. Searched from {start_dir}"
                 )
             current_dir = current_dir.parent
-
-    def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
-        """Reads and parses a JSON file; return an empty dict in case of a missing optional file."""
-        if not file_path.exists():
-            if (
-                file_path.name == self.WORKSPACE_CONFIG_FILE_NAME
-                or file_path.name == self.LOCAL_BUILD_CONFIG_FILE_NAME
-            ):
-                raise FileNotFoundError(
-                    f"Mandatory configuration file not found: {file_path}"
-                )
-            return {}
-
-        try:
-            with file_path.open("r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Failed to parse configuration file {file_path.name}: {e}"
-            )
-        except Exception as e:
-            raise IOError(f"Error reading configuration file {file_path.name}: {e}")
 
     def _load_configs(self) -> None:
         """Loads all configuration files used by puck."""
@@ -324,6 +320,33 @@ class Workspace:
                     )
                 logger.debug(f"Found local ad-hoc profile: {entry['name']}")
                 ad_hoc_profile = deserialize_config(entry, BuildProfile)
+
+                if ad_hoc_profile.inherits_from:
+                    logger.debug(
+                        f"Local ad-hoc profile inherits from global profile: {ad_hoc_profile.inherits_from}"
+                    )
+                    if ad_hoc_profile.inherits_from not in resolved_profiles:
+                        raise ValueError(
+                            f"Build profile inheritance error: Profile '{ad_hoc_profile.inherits_from}' "
+                            f"in '{self.local_build_config_path}' is neither globally defined nor an ad-hoc profile."
+                        )
+                    ad_hoc_profile = deserialize_config(
+                        self._deep_merge(
+                            asdict(resolved_profiles[ad_hoc_profile.inherits_from]),
+                            entry,
+                        ),
+                        BuildProfile,
+                    )
+
+                if ad_hoc_profile.name in resolved_profiles:
+                    if not ad_hoc_profile.is_override:
+                        logger.warning(
+                            f"Local ad-hoc profile already exists: {entry['name']}"
+                        )
+                elif ad_hoc_profile.is_override:
+                    logger.warning(
+                        f"Local ad-hoc profile is marked as override but no profile with the same name already exists: {entry['name']}"
+                    )
                 resolved_profiles[ad_hoc_profile.name] = ad_hoc_profile
                 logger.debug(
                     f"Local ad-hoc profile overwritten/added: {ad_hoc_profile.name}"
@@ -337,6 +360,16 @@ class Workspace:
         )
         return resolved_profiles
 
+    def _get_project_path(self, p_def: ProjectDefinition) -> Path:
+        """
+        Calculates the absolute file system path for a project based on
+        its definition (p_def).
+        """
+        relative_path_part = p_def.path if p_def.path else p_def.name
+        project_absolute_path = self.workspace_root / relative_path_part
+
+        return project_absolute_path
+
     def _create_projects_from_config(self) -> None:
         """
         Creates the runtime Project objects (self.projects) from the raw
@@ -345,10 +378,9 @@ class Workspace:
         self._projects: Dict[str, Project] = {}
 
         for p_def in self.workspace_config.projects:
-            project_path = p_def.path if p_def.path else p_def.name
             project = Project(
                 name=p_def.name,
-                path=self.workspace_root / project_path,
+                path=self._get_project_path(p_def),
                 repository_url=p_def.repository_url,
                 depends_on=p_def.dependencies,
             )
@@ -400,6 +432,49 @@ class Workspace:
                 dfs_visit(project_name, [])
 
         return sorted_list
+
+    def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
+        """Reads and parses a JSON file; return an empty dict in case of a missing optional file."""
+        if not file_path.exists():
+            if (
+                file_path.name == self.WORKSPACE_CONFIG_FILE_NAME
+                or file_path.name == self.LOCAL_BUILD_CONFIG_FILE_NAME
+            ):
+                raise FileNotFoundError(
+                    f"Mandatory configuration file not found: {file_path}"
+                )
+            return {}
+
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Failed to parse configuration file {file_path.name}: {e}"
+            )
+        except Exception as e:
+            raise IOError(f"Error reading configuration file {file_path.name}: {e}")
+
+    @staticmethod
+    def _deep_merge(
+        base_dict: Dict[str, Any], overlay_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Recursively merges overlay_dict into base_dict.
+        If a key exists in both and the values are dictionaries, they are merged recursively.
+        Otherwise, the value from overlay_dict overwrites the value from base_dict.
+        """
+        merged_dict = base_dict.copy()
+
+        for key, overlay_value in overlay_dict.items():
+            base_value = merged_dict.get(key)
+
+            if isinstance(base_value, dict) and isinstance(overlay_value, dict):
+                merged_dict[key] = Workspace._deep_merge(base_value, overlay_value)
+            else:
+                merged_dict[key] = overlay_value
+
+        return merged_dict
 
 
 def print_projects_in_build_order(workspace: Workspace) -> None:

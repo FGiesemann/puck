@@ -35,6 +35,8 @@ class BuildProfile:
 
     name: str
     description: Optional[str] = None
+    inherits_from: Optional[str] = None
+    is_override: Optional[bool] = False
     conan: ConanConfig = field(default_factory=ConanConfig)
     build: BuildConfig = field(default_factory=BuildConfig)
     build_directory: Optional[str] = None
@@ -62,6 +64,7 @@ class ProjectDefinition:
     path: str = ""
     repository_url: Optional[str] = None
     dependencies: List[str] = field(default_factory=list)
+    conan_editable: Optional[bool] = False
 
 
 @dataclass

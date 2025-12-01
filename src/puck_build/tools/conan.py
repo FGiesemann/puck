@@ -74,3 +74,20 @@ class ConanTool:
             raise ConanToolError(
                 "Conan command not found. Is Conan installed and in PATH?"
             )
+
+    def add_editable(self, project_path: Path) -> None:
+        """
+        Adds a local project as an editable package to the Conan cache.
+        """
+        command = ["conan", "editable", "add", "."]
+
+        try:
+            self._execute(command, cwd=project_path)
+        except subprocess.CalledProcessError as e:
+            raise ConanToolError(
+                f"Conan editable add failed for  project at {project_path.name} with return code {e.returncode}."
+            )
+        except FileNotFoundError:
+            raise ConanToolError(
+                "Conan command not found. Is Conan installed and in PATH?"
+            )
