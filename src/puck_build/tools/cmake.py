@@ -39,6 +39,32 @@ class CMakeTool:
         logger.debug(f"Executing: {command_str} in directory {cwd.as_posix()}")
         subprocess.run(command, check=True, cwd=cwd)
 
+    def configure(
+        self, project_path: Path, preset_name: Optional[str], build_path: Optional[str]
+    ) -> None:
+        """
+        Executes the CMake configure step using the specified profile preset.
+        This must be run after conan install.
+        """
+
+        command = ["cmake"]
+
+        if preset_name:
+            command.extend(["--preset", preset_name])
+        elif build_path:
+            command.append(build_path)
+        else:
+            raise CMakeToolError(
+                "Build configuration failed: Either 'preset_name' or 'build_path' must be provided."
+            )
+
+        try:
+            self._execute(command, cwd=project_path)
+        except subprocess.CalledProcessError as e:
+            raise CMakeToolError(
+                f"CMake configure failed for {project_path.name}/{preset_name} with return code {e.returncode}."
+            )
+
     def build(
         self,
         project_path: Path,

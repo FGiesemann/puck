@@ -221,6 +221,11 @@ class Workspace:
                     continue
 
                 try:
+                    cmake_tool.configure(
+                        project_path=project.path,
+                        preset_name=preset_name,
+                        build_path=build_path_to_use,
+                    )
                     cmake_tool.build(
                         project_path=project.path,
                         preset_name=preset_name,
