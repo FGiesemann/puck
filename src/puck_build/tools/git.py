@@ -80,7 +80,7 @@ class GitTool:
         logger.info(f"  Cleaning repository: {repo_dir.name}")
 
         stash_command = ["git", "stash", "push", "-u", "-m", "puck-cleanup-stash"]
-        reset_command = ["git", "reset", "--hard", "@{{u}}"]
+        reset_command = ["git", "reset", "--hard", "@{u}"]
         clean_command = ["git", "clean", "-fdx"]
         submodule_command = ["git", "submodule", "update", "--init", "--recursive"]
 
