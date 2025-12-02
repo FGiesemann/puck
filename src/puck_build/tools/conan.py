@@ -54,6 +54,7 @@ class ConanTool:
             "install",
             project_path.as_posix(),
             f"--profile:host={conan_profile_name}",
+            "--build=missing",
         ]
 
         for key, value in settings.items():
