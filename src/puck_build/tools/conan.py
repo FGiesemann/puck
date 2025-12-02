@@ -57,7 +57,7 @@ class ConanTool:
         ]
 
         for key, value in settings.items():
-            command.append(f"-s {key}={value}")
+            command.append(f"-s{key}={value}")
         if install_folder:
             command.append(f"--output-folder={install_folder}")
 
