@@ -194,6 +194,10 @@ class Workspace:
         cmake_tool = CMakeTool(self._dry_run)
 
         for project in self.projects:
+            if project.name in self.local_build_config.skip_build:
+                logger.info(f"Skipping build for {project.name} (local build config)")
+                continue
+
             logger.info(f"Building project: **{project.name}**")
 
             for profile_name in profile_names:

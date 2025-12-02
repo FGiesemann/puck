@@ -54,6 +54,7 @@ class LocalBuildConfig:
     """The local puck-build.json in a workspace."""
 
     profiles: List[Dict[str, Any] | str] = field(default_factory=list)
+    skip_build: List[str] = field(default_factory=list)
 
 
 @dataclass
