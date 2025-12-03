@@ -6,9 +6,11 @@ TODO List for Puck
   
   - Could in principle also define "libraries" in global puck config, then
     they could be "imported" into projects, where they set CMake or conan
-    settings
+    settings (see cmake_conan_vars.txt)
 
 - puck pull command: tries to pull all repositories
   For the currently checked out branch
 
 - Better error messages
+
+- Allow puck install --update for conan install --update

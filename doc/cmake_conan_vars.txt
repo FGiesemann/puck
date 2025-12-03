@@ -1,0 +1,46 @@
+Extend local build config puck-build.json with a "profile_settings" block.
+This names a profile and
+- can import pre-defined "libraries"
+- set cmake variables
+- set conan environment variables
+
+// puck-build.json
+{
+    "profiles": [
+        "..."
+    ],
+
+    "project_settings": [
+        {
+            "name": "Project_A",
+            "imports": [
+                "Qt6", "Sqlite3"
+            ],
+            "cmake_vars": {
+                "CUSTOM_BUILD_FLAG": "TRUE"
+            },
+            "conan_env_vars": {
+                "CUSTOM_GENERATOR_PATH": "/opt/custom_tool/bin",
+                "LICENSE_KEY": "XYZ-123"
+            }
+        }
+    ]
+}
+
+// global .puck/libraries.json
+{
+    "libraries": [
+        {
+            "name": "Qt6",
+            "cmake_vars": {
+                "QT6_DIR": "/opt/Qt/6.6.0"
+            }
+        },
+        {
+            "name": "Sqlite3",
+            "cmake_vars": {
+                ...
+            }
+        }
+    ]
+}
