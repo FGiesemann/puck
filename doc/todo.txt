@@ -1,0 +1,14 @@
+TODO List for Puck
+
+- Let local build configuration specify CMake config options per project
+  E.g., user can specify CMAKE_PREFIX_PATH or other variables needed to find
+  packages
+  
+  - Could in principle also define "libraries" in global puck config, then
+    they could be "imported" into projects, where they set CMake or conan
+    settings
+
+- puck pull command: tries to pull all repositories
+  For the currently checked out branch
+
+- Better error messages
