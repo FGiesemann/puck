@@ -14,3 +14,13 @@ TODO List for Puck
 - Better error messages
 
 - Allow puck install --update for conan install --update
+
+- IDE project file generation
+  puck could in principle generate config files that allow importing the project
+  into an IDE (via cmake -G <generator>)
+
+- puck clean to remove build-artifacts, clear CMake cache
+
+- package lifecycle: puck package uses conan create to build packages
+
+- puck test run all tests
