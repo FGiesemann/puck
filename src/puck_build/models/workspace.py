@@ -156,6 +156,9 @@ class Workspace:
         conan_tool = ConanTool(self._dry_run)
         self._ensure_editable_packages_added(conan_tool)
         for project in self.projects:
+            if project.no_code:
+                logger.info(f"Skipping install for {project.name} (no code)")
+                continue
             logger.info(f"Installing dependencies for project: **{project.name}**")
             for profile_name in profile_names:
                 profile = self.resolved_profiles.get(profile_name)
@@ -194,6 +197,9 @@ class Workspace:
         cmake_tool = CMakeTool(self._dry_run)
 
         for project in self.projects:
+            if project.no_code:
+                logger.info(f"Skipping build for {project.name} (no code)")
+                continue
             if project.name in self.local_build_config.skip_build:
                 logger.info(f"Skipping build for {project.name} (local build config)")
                 continue
@@ -277,9 +283,10 @@ class Workspace:
             for i, project in enumerate(self.projects):
                 path = project.path
                 editable_status = " (EDITABLE)" if project.conan_editable else ""
+                no_code_status = " (NO CODE)" if project.no_code else ""
 
                 logger.print(
-                    f"  {i + 1}. {project.name}{editable_status} [Path: {path.relative_to(self.workspace_root)}]"
+                    f"  {i + 1}. {project.name}{editable_status}{no_code_status} [Path: {path.relative_to(self.workspace_root)}]"
                 )
 
                 if logger.min_level.value >= LogLevel.VERBOSE.value:
@@ -432,6 +439,7 @@ class Workspace:
                 repository_url=p_def.repository_url,
                 depends_on=p_def.depends_on,
                 conan_editable=p_def.conan_editable,
+                no_code=p_def.no_code,
             )
             self._projects[project.name] = project
         logger.debug(f"Successfully loaded {len(self._projects)} projects.")

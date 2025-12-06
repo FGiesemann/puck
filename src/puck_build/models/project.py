@@ -26,6 +26,7 @@ class Project:
         repository_url: str | None,
         depends_on: List[str] = [],
         conan_editable: bool | None = False,
+        no_code: bool | None = False,
     ):
         """
         Initializes a Project instance.
@@ -35,6 +36,7 @@ class Project:
         self._repository_url = repository_url
         self._depends_on = depends_on
         self._conan_editable = conan_editable if conan_editable else False
+        self._no_code = no_code if no_code else False
 
         self._absolute_path = self.path.resolve()
 
@@ -62,6 +64,10 @@ class Project:
     @property
     def conan_editable(self) -> bool:
         return self._conan_editable
+
+    @property
+    def no_code(self) -> bool:
+        return self._no_code
 
     def __repr__(self) -> str:
         return f"Project(name='{self.name}', path='{self.path}')"

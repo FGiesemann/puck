@@ -66,6 +66,7 @@ class ProjectDefinition:
     repository_url: Optional[str] = None
     depends_on: List[str] = field(default_factory=list)
     conan_editable: Optional[bool] = False
+    no_code: Optional[bool] = False
 
 
 @dataclass
