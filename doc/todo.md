@@ -121,14 +121,26 @@ starten zu müssen.
 
 ### Implementierungsansatz
 
+Microsoft stellt ein Tool/API bereit, um die installierten Visual Studio
+Versionen, bzw. Build-Tools abzurufen: Visual Studio Build Tools Installer und
+Querier bzw. Visual Studio Setup API.
+
 1. Plattform-Erkennung: In der puck.py oder der Workspace-Klasse prüfen, ob das
   aktuelle Betriebssystem Windows ist (os.name == 'nt').
 1. Compiler-Erkennung: Prüfen, ob das aktuell verwendete Conan-Profil einen
   MSVC-Compiler (z.B. msvc) konfiguriert hat.
-1. Skript-Findung: Den Pfad zur vcvarsall.bat (basierend auf der installierten
-  Visual Studio-Version) über Umgebungsvariablen (VSINSTALLDIR) oder die
-  Windows-Registrierung suchen.
-1. Wrapper: Die subprocess.run-Aufrufe für cmake und conan unter Windows nicht
-   direkt ausführen, sondern durch einen
-   `call vcvarsall.bat <arch> && <Befehl>`-Wrapper leiten, um die korrekte
-   Umgebung für diesen spezifischen Prozess zu setzen.
+1. Setup-API-Abfrage
+
+    - Implementierung: Implementieren Sie eine neue VSToolFinder-Klasse (z.B. in
+      C#/.NET, PowerShell, oder nutzen Sie die Python-Schnittstellen, falls
+      vorhanden), die das Visual Studio Setup API abfragt.
+    - Ergebnis: Dieses Tool liefert den zuverlässigen, absoluten Pfad zur
+      benötigten VS-Installation basierend auf der Compilerversion (z.B.
+      msvc.version=193).
+
+1. Umgebungsextraktion und Injektion
+    - Ausführung: Führen Sie `vcvarsall.bat <arch>` in einem separaten Prozess
+      aus und fangen Sie die resultierenden Umgebungsvariablen (insbesondere
+      PATH, INCLUDE, LIB) ab, die das Skript setzt.
+    - Injektion: Fügen Sie diese extrahierten Variablen in die env-Map des
+      nachfolgenden subprocess.run-Aufrufs für cmake configure ein.
