@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "Puck Developer", email = "nobody@example.com"},
+    {name = "Florian Giesemann", email = "fgiesemann@proton.me"},
 ]
 keywords = ["conan", "cmake", "build", "project-management", "cxx", "puck"]
 dependencies = [
