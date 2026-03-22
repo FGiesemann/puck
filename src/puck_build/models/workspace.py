@@ -355,6 +355,8 @@ class Workspace:
             f"Found {len(resolved_profiles)} global profiles: {list(resolved_profiles.keys())}"
         )
 
+        requested_profiles = []
+
         logger.debug("Processing local build profiles")
         for entry in self.local_build_config.profiles:
             if isinstance(entry, str):
@@ -367,6 +369,7 @@ class Workspace:
                         f"in '{self.local_build_config_path}' is neither globally defined nor an ad-hoc profile."
                     )
                 logger.debug(f"Found referenced global profile: {profile_name}")
+                requested_profiles.append(profile_name)
             elif isinstance(entry, dict):
                 # Local ad-hoc profile (Full definition)
                 if "name" not in entry:
@@ -374,6 +377,7 @@ class Workspace:
                         f"Ad-hoc profile in '{self.local_build_config_path}' is missing the mandatory 'name' key."
                     )
                 logger.debug(f"Found local ad-hoc profile: {entry['name']}")
+                requested_profiles.append(entry["name"])
                 ad_hoc_profile = deserialize_config(entry, BuildProfile)
 
                 if ad_hoc_profile.inherits_from:
@@ -413,6 +417,11 @@ class Workspace:
         logger.debug(
             f"Resolved {len(resolved_profiles)} build profiles: {list(resolved_profiles.keys())}"
         )
+
+        # Return only the profiles named in requested_profiles
+        resolved_profiles = {
+            k: v for k, v in resolved_profiles.items() if k in requested_profiles
+        }
         return resolved_profiles
 
     def _get_project_path(self, p_def: ProjectDefinition) -> Path:
