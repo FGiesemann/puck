@@ -342,7 +342,7 @@ class Workspace:
     def _resolve_build_profiles(self) -> Dict[str, BuildProfile]:
         """
         Resolves the active build profiles by loading global definitions and
-        overwriting them with local ad-hoc definitions from .puck-build.json.
+        overwriting them with local ad-hoc definitions from puck-build.json.
 
         """
         logger.debug("Resolving build profiles")

@@ -46,7 +46,7 @@ def main():
 
     install_parser = subparsers.add_parser(
         "install",
-        help="Installs dependencies for ALL available profiles defined in .puck-build.json.",
+        help="Installs dependencies for ALL available profiles defined in puck-build.json.",
     )
 
     def execute_install(args, ws):
