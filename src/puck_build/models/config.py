@@ -44,14 +44,22 @@ class BuildProfile:
 
 @dataclass
 class GlobalConfig:
-    """The global puck configuration file (in user's home directory)."""
+    """The global puck configuration file (in user's home directory).
+
+    This stores a list of build profiles.
+    """
 
     profiles: List[BuildProfile] = field(default_factory=list)
 
 
 @dataclass
 class LocalBuildConfig:
-    """The local puck-build.json in a workspace."""
+    """The local puck-build.json in a workspace.
+
+    The build config stores a list of profiles, referecing global ones or
+    defining ad-hoc profiles.
+    It also contains a list of projects for which the build step is skipped.
+    """
 
     profiles: List[Dict[str, Any] | str] = field(default_factory=list)
     skip_build: List[str] = field(default_factory=list)
@@ -59,7 +67,10 @@ class LocalBuildConfig:
 
 @dataclass
 class ProjectDefinition:
-    """Defines a single project in the workspace."""
+    """Defines a single project in the workspace.
+
+    Stores the configuration of a project.
+    """
 
     name: str
     path: str = ""
@@ -71,6 +82,9 @@ class ProjectDefinition:
 
 @dataclass
 class WorkspaceConfig:
-    """Structure of puck-workspace.json."""
+    """Structure of puck-workspace.json.
+
+    The workspace configuration stores a list of projects.
+    """
 
     projects: List[ProjectDefinition] = field(default_factory=list)

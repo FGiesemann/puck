@@ -16,6 +16,7 @@ from typing import List
 class Project:
     """
     Represents a single project definition loaded from the puck-workspace.json.
+
     Handles applying default values for optional fields and calculating absolute paths.
     """
 

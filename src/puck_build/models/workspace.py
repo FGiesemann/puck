@@ -6,7 +6,7 @@
 # This file is distributed under the terms of the MIT License
 
 """
-Defines the workspace model class which represent a main project that contains
+Defines the workspace model class which represents a main project that contains
 subprojects in their separate directories and repositories.
 """
 
@@ -59,6 +59,12 @@ class Workspace:
     """
     Search and load the puck-workspace.json file. The location of that file
     defines the workspace root directory.
+
+    This also loads the build profiles, first the global ones, then the
+    workspace local one. The build profiles are merged.
+
+    The class also loads the project models and sorts the projects according to
+    their dependencies.
     """
 
     WORKSPACE_CONFIG_FILE_NAME = "puck-workspace.json"
@@ -103,8 +109,8 @@ class Workspace:
         return self._sorted_projects
 
     def setup_projects(self, clean: bool = False) -> None:
-        """
-        Clones or updates all defined sub-projects in the workspace.
+        """Clones or updates all defined sub-projects in the workspace.
+
         Considers the project path and handles submodules recursively.
         """
         git_tool = GitTool(self._dry_run)
@@ -120,6 +126,7 @@ class Workspace:
                 )
                 continue
 
+            # TODO: is this target_dir = _get_project_path(p_def)?
             project_dir_name = p_def.path if p_def.path else p_def.name
             target_dir = self.workspace_root / project_dir_name
 
@@ -149,7 +156,8 @@ class Workspace:
         self._ensure_editable_packages_added(conan_tool)
 
     def install_projects(self, profile_names: List[str]) -> None:
-        """
+        """Handles the conan install process.
+
         Executes 'conan install' for all projects in the correct build order,
         using the specified profiles.
         """
@@ -190,7 +198,8 @@ class Workspace:
                     raise RuntimeError("Installation process aborted.")
 
     def build_projects(self, profile_names: List[str], target: str) -> None:
-        """
+        """Performs the build using CMake.
+
         Executes 'cmake --build' for all projects in the correct build order,
         using the specified profiles and target.
         """
@@ -253,7 +262,8 @@ class Workspace:
                     raise RuntimeError("Build process aborted.")
 
     def check_config(self) -> None:
-        """
+        """Check the workspace configuration.
+
         Analyzes the workspace configuration and prints the resolved state
         (profiles and project build order).
         """
@@ -293,7 +303,8 @@ class Workspace:
                     logger.print(f"     Depends on: {', '.join(project.depends_on)}")
 
     def _ensure_editable_packages_added(self, conan_tool: ConanTool):
-        """
+        """Registers the conan editable packages.
+
         Ensures that all projects with 'conan_editable: true' in the workspace
         config are added as editable packages to the conan cache.
         """
@@ -309,6 +320,22 @@ class Workspace:
                 logger.debug(f"Ensured {p_def.name} is added as editable.")
 
     def _find_workspace_root(self, start_dir: Path) -> Path:
+        """Searches the workspace configuration file from the given directory.
+
+        The workspace root folder is the folder that contains the workspace
+        configuration file. From the given directory, the search goes up through
+        the folder hierarchy until the workspace configuration file is found.
+
+        Args:
+            start_dir (Path): The directory to start the search from.
+
+        Returns:
+            Path: The workspace root folder.
+
+        Raises:
+            WorkspaceNotFoundError: If the workspace configuration file is not
+            found.
+        """
         current_dir = start_dir.resolve()
         while True:
             config_file_path = current_dir / self.WORKSPACE_CONFIG_FILE_NAME
@@ -321,7 +348,13 @@ class Workspace:
             current_dir = current_dir.parent
 
     def _load_configs(self) -> None:
-        """Loads all configuration files used by puck."""
+        """Loads all configuration files used by puck.
+
+        The config files are:
+        - The workspace configuration in the workspace root folder.
+        - The workspace-local build configuration in the workspace root folder.
+        - The global build configuration in the user's home directory.
+        """
 
         logger.debug(f"Loading workspace config from {self.workspace_config_path}")
         workspace_data = self._load_json_file(self.workspace_config_path)
@@ -340,10 +373,13 @@ class Workspace:
         )
 
     def _resolve_build_profiles(self) -> Dict[str, BuildProfile]:
-        """
-        Resolves the active build profiles by loading global definitions and
-        overwriting them with local ad-hoc definitions from puck-build.json.
+        """Resolves the build profiles to use for this workspace.
 
+        Combines the information of global build profiles with the definitions
+        of workspace-local ad-hoic profiles.
+
+        The result is a list of only those build profiles that are mentioned
+        (i.e., referenced or defined) in the local build configuration.
         """
         logger.debug("Resolving build profiles")
 
@@ -425,9 +461,11 @@ class Workspace:
         return resolved_profiles
 
     def _get_project_path(self, p_def: ProjectDefinition) -> Path:
-        """
-        Calculates the absolute file system path for a project based on
-        its definition (p_def).
+        """Calculates the absolute file system path for a project.
+
+        The path is based on the project's name or, when given, the path
+        attribute. These paths are relative to the workspace root, so this
+        function computes the absolute path.
         """
         relative_path_part = p_def.path if p_def.path else p_def.name
         project_absolute_path = self.workspace_root / relative_path_part
@@ -435,9 +473,11 @@ class Workspace:
         return project_absolute_path
 
     def _create_projects_from_config(self) -> None:
-        """
-        Creates the runtime Project objects (self.projects) from the raw
-        ProjectDefinition models loaded from puck-workspace.json.
+        """Convert ProjectDefinitions into runtime Project objects.
+
+        The ProjectDefinition is a collection of data fields from the workspace
+        configuration file. The runtime Project object contains all data but in
+        addition handles default values and calculates absolute paths.
         """
         self._projects: Dict[str, Project] = {}
 
@@ -454,9 +494,10 @@ class Workspace:
         logger.debug(f"Successfully loaded {len(self._projects)} projects.")
 
     def _topological_sort(self) -> List[Project]:
-        """
-        Performs a Depth-First Search (DFS) based topological sort
-        to determine the correct build order. Checks for cycles.
+        """Sort projects according to their dependencies.
+
+        Performs a Depth-First Search (DFS) based topological sort to determine
+        the correct build order. Checks for cycles.
         """
         # Graph state to detect cycles and track progress
         visit_state: Dict[str, VisitState] = {
@@ -525,8 +566,8 @@ class Workspace:
     def _deep_merge(
         base_dict: Dict[str, Any], overlay_dict: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """
-        Recursively merges overlay_dict into base_dict.
+        """Recursively merges overlay_dict into base_dict.
+
         If a key exists in both and the values are dictionaries, they are merged recursively.
         Otherwise, the value from overlay_dict overwrites the value from base_dict.
         """
@@ -544,6 +585,10 @@ class Workspace:
 
 
 def print_projects_in_build_order(workspace: Workspace) -> None:
+    """Prints a list of projects from a workspace.
+
+    The projects are listed in build order as resolved in the workspace.
+    """
     for i, project in enumerate(workspace.projects):
         logger.print(
             f"  {i + 1} (Path: {project.absolute_path.relative_to(workspace.workspace_root)})"
