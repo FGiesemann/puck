@@ -38,7 +38,8 @@ parameters:
     {
       "name": "ProjectC",
       "repository_url": "https://github.com/.../ProjectC.git",
-      "no_code": true
+      "no_code": true,
+      "path": "Project_C"
     }
   ]
 }
@@ -57,6 +58,9 @@ directly without generating a conan package for Project A after every edit.
 Project C is defined as "no_code", which means that the conan and cmake steps
 are skipped for that project. This is usefull for subprojects that contain data,
 documentation or anything that does not require processing with conan and cmake.
+The project also defines a "path", which is the name of the folder to which the
+project will be cloned. This path is relative to the workspace folder. If no
+path is given, the folder will be the same as the project's name.
 
 ## Build Profile
 
