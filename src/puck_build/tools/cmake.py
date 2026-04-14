@@ -40,7 +40,11 @@ class CMakeTool:
         subprocess.run(command, check=True, cwd=cwd)
 
     def configure(
-        self, project_path: Path, preset_name: Optional[str], build_path: Optional[str]
+        self,
+        project_path: Path,
+        preset_name: Optional[str],
+        build_path: Optional[str],
+        variable_defs: Optional[dict[str, str]],
     ) -> None:
         """
         Executes the CMake configure step using the specified profile preset.
@@ -57,6 +61,10 @@ class CMakeTool:
             raise CMakeToolError(
                 "Build configuration failed: Either 'preset_name' or 'build_path' must be provided."
             )
+
+        if variable_defs:
+            for key, value in variable_defs.items():
+                command.append(f"-D{key}={value}")
 
         try:
             self._execute(command, cwd=project_path)

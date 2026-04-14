@@ -19,6 +19,7 @@ from enum import Enum
 from puck_build.models.config import (
     BuildProfile,
     GlobalConfig,
+    ProjectSettings,
     LocalBuildConfig,
     ProjectDefinition,
     WorkspaceConfig,
@@ -239,11 +240,19 @@ class Workspace:
                     )
                     continue
 
+                cmake_variables = {}
+                project_settings = self.local_build_config.project_settings.get(
+                    project.name, {}
+                )
+                if project_settings:
+                    cmake_variables = project_settings.cmake_vars
+
                 try:
                     cmake_tool.configure(
                         project_path=project.path,
                         preset_name=preset_name,
                         build_path=build_path_to_use,
+                        variable_defs=cmake_variables,
                     )
                     cmake_tool.build(
                         project_path=project.path,
@@ -298,6 +307,11 @@ class Workspace:
                 logger.print(
                     f"  {i + 1}. {project.name}{editable_status}{no_code_status} [Path: {path.relative_to(self.workspace_root)}]"
                 )
+
+                if project.name in self.local_build_config.project_settings:
+                    logger.print(
+                        f"     {self.local_build_config.project_settings[project.name]}"
+                    )
 
                 if logger.min_level.value >= LogLevel.VERBOSE.value:
                     logger.print(f"     Depends on: {', '.join(project.depends_on)}")
@@ -376,7 +390,7 @@ class Workspace:
         """Resolves the build profiles to use for this workspace.
 
         Combines the information of global build profiles with the definitions
-        of workspace-local ad-hoic profiles.
+        of workspace-local ad-hoc profiles.
 
         The result is a list of only those build profiles that are mentioned
         (i.e., referenced or defined) in the local build configuration.

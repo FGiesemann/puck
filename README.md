@@ -161,6 +161,26 @@ overwrites the C++-Standard version.
 The build for some projects may be skipped locally. This will not skip the conan
 install step for this project, just the build!
 
+### Defining Project Settings
+
+The local build configuration can also specify additional settings used for
+processing a project. Currently, CMake-Variables can be specified, e.g.:
+
+```json
+{
+  "profiles": [ ... ],
+  "project_settings": {
+    "ProjectA": {
+      "cmake_vars": {
+        "Qt6_DIR": "path to Qt6 cmake files"
+      }
+    }
+  }
+}
+```
+
+These CMake variables will be used during the CMake configure step.
+
 ## Puck Commands
 
 After creating the global `puck-build.json`, a projekt managed with puck can be

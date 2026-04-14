@@ -53,6 +53,13 @@ class GlobalConfig:
 
 
 @dataclass
+class ProjectSettings:
+    """Settings for a single project."""
+
+    cmake_vars: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class LocalBuildConfig:
     """The local puck-build.json in a workspace.
 
@@ -63,6 +70,7 @@ class LocalBuildConfig:
 
     profiles: List[Dict[str, Any] | str] = field(default_factory=list)
     skip_build: List[str] = field(default_factory=list)
+    project_settings: Dict[str, ProjectSettings] = field(default_factory=dict)
 
 
 @dataclass

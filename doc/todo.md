@@ -35,14 +35,14 @@ für vordefnierte Bibliotheken.
     "project_settings": {
       "Project_A": {
         "imports": ["Qt6", "Sqlite3"],
-          "cmake_vars": {
-            "CUSTOM_BUILD_FLAG": "TRUE"
-          },
-          "conan_env_vars": {
-            "CUSTOM_GENERATOR_PATH": "/opt/custom_tool/bin",
-            "LICENSE_KEY": "XYZ-123"
-          }
+        "cmake_vars": {
+          "CUSTOM_BUILD_FLAG": "TRUE"
+        },
+        "conan_env_vars": {
+          "CUSTOM_GENERATOR_PATH": "/opt/custom_tool/bin",
+          "LICENSE_KEY": "XYZ-123"
         }
+      }
     }
 }
 ```
